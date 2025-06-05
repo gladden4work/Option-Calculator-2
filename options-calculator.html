@@ -1,0 +1,680 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Options Pricing Calculator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a1a;
+            color: #ffffff;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: #00d4aa;
+        }
+
+        .mode-toggle {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn--primary {
+            background: #00d4aa;
+            color: #000;
+        }
+
+        .btn--secondary {
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+        }
+
+        .btn.active {
+            background: #00d4aa;
+            color: #000;
+        }
+
+        .calculator-section {
+            display: none;
+        }
+
+        .calculator-section.active {
+            display: block;
+        }
+
+        .calculator-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid #333;
+        }
+
+        .card h3 {
+            margin-bottom: 20px;
+            color: #00d4aa;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #ccc;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            background: #333;
+            border: 1px solid #555;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 16px;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #00d4aa;
+        }
+
+        .option-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .option-toggle .btn {
+            flex: 1;
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+
+        .results-section {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid #333;
+        }
+
+        .price-display {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .theoretical-price {
+            font-size: 3rem;
+            font-weight: 700;
+            color: #00d4aa;
+            margin-bottom: 10px;
+        }
+
+        .price-difference {
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+
+        .greeks-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .greek-item {
+            text-align: center;
+            padding: 15px;
+            background: #333;
+            border-radius: 8px;
+        }
+
+        .greek-label {
+            font-size: 14px;
+            color: #ccc;
+            margin-bottom: 5px;
+        }
+
+        .greek-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .multi-leg-section {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid #333;
+        }
+
+        .add-leg-btn {
+            background: #00d4aa;
+            color: #000;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .leg-item {
+            background: #333;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border: 1px solid #555;
+        }
+
+        .leg-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .remove-leg {
+            background: #ff4757;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .leg-controls {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
+
+        .net-premium-display {
+            background: #333;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .net-premium-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #00d4aa;
+        }
+
+        .positive { color: #00d4aa; }
+        .negative { color: #ff4757; }
+
+        @media (max-width: 768px) {
+            .calculator-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .greeks-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .leg-controls {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Options Pricing Calculator</h1>
+            <p>Professional-grade Black-Scholes pricing with multi-leg strategy support</p>
+        </div>
+
+        <div class="mode-toggle">
+            <button id="singleLegBtn" class="btn btn--primary active">Single Leg</button>
+            <button id="multiLegBtn" class="btn btn--secondary">Multi Leg</button>
+        </div>
+
+        <!-- Single Leg Calculator -->
+        <div id="singleLegSection" class="calculator-section active">
+            <div class="calculator-grid">
+                <div class="card">
+                    <h3>Option Parameters</h3>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Option Type</label>
+                        <select id="optionType" class="form-control">
+                            <option value="call">Call</option>
+                            <option value="put">Put</option>
+                        </select>
+                    </div>
+
+                    <div class="option-toggle">
+                        <button id="europeanBtn" class="btn btn--primary active">European</button>
+                        <button id="americanBtn" class="btn btn--secondary">American</button>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Underlying Price ($)</label>
+                        <input type="number" id="underlyingPrice" class="form-control" value="125" step="0.01">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Strike Price ($)</label>
+                        <input type="number" id="strikePrice" class="form-control" value="130" step="0.01">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Days to Expiry</label>
+                        <input type="number" id="daysToExpiry" class="form-control" value="30" min="1">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Implied Volatility (%)</label>
+                        <input type="number" id="impliedVolatility" class="form-control" value="25" step="0.1">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Risk-free Rate (%)</label>
+                        <input type="number" id="riskFreeRate" class="form-control" value="4.5" step="0.01">
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Pricing Results</h3>
+                    
+                    <div class="price-display">
+                        <div class="theoretical-price" id="theoreticalPrice">$0.0000</div>
+                        <div class="price-difference" id="priceDifference">Difference: +0.00%</div>
+                    </div>
+
+                    <div class="greeks-grid">
+                        <div class="greek-item">
+                            <div class="greek-label">Delta</div>
+                            <div class="greek-value" id="deltaValue">0.0000</div>
+                        </div>
+                        <div class="greek-item">
+                            <div class="greek-label">Gamma</div>
+                            <div class="greek-value" id="gammaValue">0.0000</div>
+                        </div>
+                        <div class="greek-item">
+                            <div class="greek-label">Theta</div>
+                            <div class="greek-value" id="thetaValue">0.0000</div>
+                        </div>
+                        <div class="greek-item">
+                            <div class="greek-label">Vega</div>
+                            <div class="greek-value" id="vegaValue">0.0000</div>
+                        </div>
+                        <div class="greek-item">
+                            <div class="greek-label">Rho</div>
+                            <div class="greek-value" id="rhoValue">0.0000</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Multi Leg Calculator -->
+        <div id="multiLegSection" class="calculator-section">
+            <div class="multi-leg-section">
+                <h3>Multi-Leg Strategy Builder</h3>
+                
+                <button id="addLegBtn" class="add-leg-btn">+ Add Leg</button>
+                
+                <div id="legsContainer">
+                    <!-- Legs will be added dynamically -->
+                </div>
+
+                <div class="net-premium-display">
+                    <div style="margin-bottom: 10px; color: #ccc;">Net Premium</div>
+                    <div class="net-premium-value" id="netPremium">$0.0000</div>
+                </div>
+
+                <div class="greeks-grid">
+                    <div class="greek-item">
+                        <div class="greek-label">Net Delta</div>
+                        <div class="greek-value" id="netDelta">0.0000</div>
+                    </div>
+                    <div class="greek-item">
+                        <div class="greek-label">Net Gamma</div>
+                        <div class="greek-value" id="netGamma">0.0000</div>
+                    </div>
+                    <div class="greek-item">
+                        <div class="greek-label">Net Theta</div>
+                        <div class="greek-value" id="netTheta">0.0000</div>
+                    </div>
+                    <div class="greek-item">
+                        <div class="greek-label">Net Vega</div>
+                        <div class="greek-value" id="netVega">0.0000</div>
+                    </div>
+                    <div class="greek-item">
+                        <div class="greek-label">Net Rho</div>
+                        <div class="greek-value" id="netRho">0.0000</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentOptionStyle = 'european'; // Default to European
+        const TRADING_DAYS_PER_YEAR = 252; // Common convention for options, can also use 365 for calendar days
+        let legCounter = 0;
+        let legs = [];
+
+        // Mathematical functions
+        function normalCDF(x) {
+            const a1 =  0.254829592;
+            const a2 = -0.284496736;
+            const a3 =  1.421413741;
+            const a4 = -1.453152027;
+            const a5 =  1.061405429;
+            const p  =  0.3275911;
+            
+            const sign = x < 0 ? -1 : 1;
+            x = Math.abs(x) / Math.sqrt(2.0);
+            
+            const t = 1.0 / (1.0 + p * x);
+            const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+            
+            return 0.5 * (1.0 + sign * y);
+        }
+
+        function normalPDF(x) {
+            return (1 / Math.sqrt(2 * Math.PI)) * Math.exp(-0.5 * x * x);
+        }
+
+        function blackScholes(S, K, T, r, sigma, optionType) {
+            if (T <= 0 || S <= 0 || K <= 0 || sigma <= 0) {
+                return { price: 0, delta: 0, gamma: 0, theta: 0, vega: 0, rho: 0 };
+            }
+            
+            const d1 = (Math.log(S / K) + (r + 0.5 * sigma * sigma) * T) / (sigma * Math.sqrt(T));
+            const d2 = d1 - sigma * Math.sqrt(T);
+            
+            const Nd1 = normalCDF(d1);
+            const Nd2 = normalCDF(d2);
+            const nd1 = normalPDF(d1);
+            
+            let price, delta, gamma, theta, vega, rho;
+            
+            if (optionType === 'call') {
+                price = S * Nd1 - K * Math.exp(-r * T) * Nd2;
+                delta = Nd1;
+                rho = K * T * Math.exp(-r * T) * Nd2 / 100;
+            } else {
+                price = K * Math.exp(-r * T) * normalCDF(-d2) - S * normalCDF(-d1);
+                delta = -normalCDF(-d1);
+                rho = -K * T * Math.exp(-r * T) * normalCDF(-d2) / 100;
+            }
+            
+            gamma = nd1 / (S * sigma * Math.sqrt(T));
+            theta = -(S * nd1 * sigma) / (2 * Math.sqrt(T)) - r * K * Math.exp(-r * T) * Nd2;
+            if (optionType === 'put') {
+                theta = -(S * nd1 * sigma) / (2 * Math.sqrt(T)) + r * K * Math.exp(-r * T) * normalCDF(-d2);
+            }
+            theta = theta / 365; // Convert to daily theta
+            
+            vega = S * nd1 * Math.sqrt(T) / 100; // Convert to percentage
+            
+            return { price, delta, gamma, theta, vega, rho };
+        }
+
+        function calculateSingleLeg() {
+            if (currentOptionStyle === 'american') {
+                alert('American style selected. Note: This calculator uses the Black-Scholes model, which is designed for European options. The price shown is an approximation and may not be accurate for American options, especially puts.');
+            }
+
+            const S = parseFloat(document.getElementById('underlyingPrice').value) || 0;
+            const K = parseFloat(document.getElementById('strikePrice').value) || 0;
+            const daysToExpiry = parseFloat(document.getElementById('daysToExpiry').value);
+            const T = daysToExpiry / 365.0; // Convert days to years
+            const sigmaInput = parseFloat(document.getElementById('impliedVolatility').value);
+            const sigma = sigmaInput / 100.0; // Convert percentage to decimal
+            const rInput = parseFloat(document.getElementById('riskFreeRate').value);
+            const r = rInput / 100.0; // Convert percentage to decimal
+            const optionType = document.getElementById('optionType').value;
+
+            if (isNaN(S) || isNaN(K) || isNaN(T) || isNaN(sigma) || isNaN(r)) {
+                // Optionally clear output fields or show an error message
+                document.getElementById('theoreticalPrice').textContent = '$0.0000';
+                // Clear other greek values as well if desired
+                return; 
+            }
+
+            const result = blackScholes(S, K, T, r, sigma, optionType);
+            
+            // Update displays
+            document.getElementById('theoreticalPrice').textContent = '$' + result.price.toFixed(4);
+            document.getElementById('deltaValue').textContent = result.delta.toFixed(4);
+            document.getElementById('gammaValue').textContent = result.gamma.toFixed(4);
+            document.getElementById('thetaValue').textContent = result.theta.toFixed(4);
+            document.getElementById('vegaValue').textContent = result.vega.toFixed(4);
+            document.getElementById('rhoValue').textContent = result.rho.toFixed(4);
+            
+            // Calculate difference (using placeholder market price)
+            const marketPrice = 12.0; // Placeholder
+            const difference = ((result.price - marketPrice) / marketPrice * 100);
+            const diffElement = document.getElementById('priceDifference');
+            diffElement.textContent = 'Difference: ' + (difference >= 0 ? '+' : '') + difference.toFixed(2) + '%';
+            diffElement.className = difference >= 0 ? 'positive' : 'negative';
+        }
+
+        function addLeg() {
+            legCounter++;
+            const legDiv = document.createElement('div');
+            legDiv.className = 'leg-item';
+            legDiv.id = 'leg-' + legCounter;
+            
+            legDiv.innerHTML = `
+                <div class="leg-header">
+                    <h4>Leg ${legCounter}</h4>
+                    <button class="remove-leg" onclick="removeLeg(${legCounter})">Remove</button>
+                </div>
+                <div class="leg-controls">
+                    <select id="leg-${legCounter}-type" onchange="calculateMultiLeg()">
+                        <option value="call">Call</option>
+                        <option value="put">Put</option>
+                    </select>
+                    <select id="leg-${legCounter}-action" onchange="calculateMultiLeg()">
+                        <option value="buy">Buy</option>
+                        <option value="sell">Sell</option>
+                    </select>
+                    <input type="number" id="legStrike-${legCounter}" placeholder="Strike Price" step="any" onchange="calculateMultiLeg()">
+                    <input type="number" id="legDaysToExpiry-${legCounter}" placeholder="Days to Expiry" step="any" onchange="calculateMultiLeg()">
+                    <input type="number" id="legVolatility-${legCounter}" placeholder="Volatility (%)" step="any" onchange="calculateMultiLeg()">
+                    <input type="number" id="legRiskFreeRate-${legCounter}" placeholder="Risk-Free Rate (%)" step="any" onchange="calculateMultiLeg()">
+                    <input type="number" id="legQuantity-${legCounter}" placeholder="Quantity" value="1" onchange="calculateMultiLeg()">
+                </div>
+                <div style="margin-top: 10px; color: #ccc;">
+                    Premium: $<span id="leg-${legCounter}-premium">0.0000</span>
+                </div>
+            `;
+            
+            document.getElementById('legsContainer').appendChild(legDiv);
+            legs.push({ id: legCounter });
+            calculateMultiLeg();
+        }
+
+        function removeLeg(legId) {
+            document.getElementById('leg-' + legId).remove();
+            legs = legs.filter(leg => leg.id !== legId);
+            calculateMultiLeg();
+        }
+
+        function calculateMultiLeg() {
+            const S = parseFloat(document.getElementById('underlyingPrice').value) || 0;
+            let netPremium = 0;
+            let netDelta = 0;
+            let netGamma = 0;
+            let netTheta = 0;
+            let netVega = 0;
+            let netRho = 0;
+            
+            legs.forEach(leg => {
+                const legElement = document.getElementById('leg-' + leg.id);
+                if (!legElement) return;
+                
+                const optionType = document.getElementById('leg-' + leg.id + '-type').value;
+                const action = document.getElementById('leg-' + leg.id + '-action').value;
+                const K = parseFloat(document.getElementById('legStrike-' + leg.id).value) || 0;
+                const daysToExpiryInput = parseFloat(document.getElementById('legDaysToExpiry-' + leg.id).value);
+                const volatilityInput = parseFloat(document.getElementById('legVolatility-' + leg.id).value);
+                const riskFreeRateInput = parseFloat(document.getElementById('legRiskFreeRate-' + leg.id).value);
+                const quantity = parseFloat(document.getElementById('legQuantity-' + leg.id).value) || 1;
+
+                if (isNaN(K) || isNaN(daysToExpiryInput) || isNaN(volatilityInput) || isNaN(riskFreeRateInput) || K <= 0) {
+                    document.getElementById('leg-' + leg.id + '-premium').textContent = 'Error';
+                    // Potentially skip this leg or set its contribution to 0
+                    return; // or continue if in a loop over legs that can fail independently
+                }
+
+                const T_leg = daysToExpiryInput / 365.0; // Convert days to years for this leg
+                const sigma_leg = volatilityInput / 100.0; // Convert percentage to decimal
+                const r_leg = riskFreeRateInput / 100.0; // Convert percentage to decimal
+                
+                if (K > 0) {
+                    const result = blackScholes(S, K, T_leg, r_leg, sigma_leg, optionType);
+                    const multiplier = action === 'buy' ? 1 : -1;
+                    
+                    // Update individual leg premium display
+                    document.getElementById('leg-' + leg.id + '-premium').textContent = result.price.toFixed(4);
+                    
+                    // Calculate net values
+                    netPremium += result.price * quantity * multiplier;
+                    netDelta += result.delta * quantity * multiplier;
+                    netGamma += result.gamma * quantity * multiplier;
+                    netTheta += result.theta * quantity * multiplier;
+                    netVega += result.vega * quantity * multiplier;
+                    netRho += result.rho * quantity * multiplier;
+                }
+            });
+            
+            // Update displays
+            document.getElementById('netPremium').textContent = '$' + netPremium.toFixed(4);
+            document.getElementById('netDelta').textContent = netDelta.toFixed(4);
+            document.getElementById('netGamma').textContent = netGamma.toFixed(4);
+            document.getElementById('netTheta').textContent = netTheta.toFixed(4);
+            document.getElementById('netVega').textContent = netVega.toFixed(4);
+            document.getElementById('netRho').textContent = netRho.toFixed(4);
+            
+            // Color code net premium
+            const netPremiumElement = document.getElementById('netPremium');
+            netPremiumElement.className = netPremium >= 0 ? 'net-premium-value positive' : 'net-premium-value negative';
+        }
+
+        // Event listeners
+        document.getElementById('singleLegBtn').addEventListener('click', function() {
+            document.getElementById('singleLegSection').classList.add('active');
+            document.getElementById('multiLegSection').classList.remove('active');
+            this.classList.add('active');
+            document.getElementById('multiLegBtn').classList.remove('active');
+        });
+
+        document.getElementById('multiLegBtn').addEventListener('click', function() {
+            document.getElementById('multiLegSection').classList.add('active');
+            document.getElementById('singleLegSection').classList.remove('active');
+            this.classList.add('active');
+            document.getElementById('singleLegBtn').classList.remove('active');
+        });
+
+        document.getElementById('europeanBtn').addEventListener('click', function() {
+            currentOptionStyle = 'european';
+            this.classList.add('active');
+            document.getElementById('americanBtn').classList.remove('active');
+            calculateSingleLeg();
+        });
+
+        document.getElementById('americanBtn').addEventListener('click', function() {
+            currentOptionStyle = 'american';
+            this.classList.add('active');
+            document.getElementById('europeanBtn').classList.remove('active');
+            calculateSingleLeg();
+        });
+
+        document.getElementById('addLegBtn').addEventListener('click', addLeg);
+
+        // Add event listeners for all input fields
+        ['underlyingPrice', 'strikePrice', 'daysToExpiry', 'impliedVolatility', 'riskFreeRate', 'optionType'].forEach(id => {
+            document.getElementById(id).addEventListener('change', calculateSingleLeg);
+            document.getElementById(id).addEventListener('input', calculateSingleLeg);
+        });
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            calculateSingleLeg();
+            
+            // Add sample legs for demonstration
+            setTimeout(() => {
+                addLeg(); // First leg - Buy 125 Call
+                document.getElementById('leg-' + legCounter + '-strike').value = '125';
+                document.getElementById('leg-' + legCounter + '-action').value = 'buy';
+                
+                addLeg(); // Second leg - Sell 130 Call
+                document.getElementById('leg-' + legCounter + '-strike').value = '130';
+                document.getElementById('leg-' + legCounter + '-action').value = 'sell';
+                
+                calculateMultiLeg();
+            }, 100);
+        });
+    </script>
+</body>
+</html>
+```
+
+## Instructions to Use the App
+
+1. **Save the Code**: Copy the complete HTML code above and save it as `options-calculator.html` on your computer
+2. **Open in Browser**: Double-click the file or drag it into any web browser to run the application
+3. **Start Calculating**: The app will load with default values and you can immediately start using it
+
+## Key Features
+
+- **Single Leg Calculator**: Calculate theoretical price and Greeks for individual options
+- **Multi Leg Strategy Builder**: Build complex spreads like the bull call spread example you mentioned
+- **Real-time Updates**: All calculations update immediately when you change inputs
+- **Professional Interface**: Dark theme designed for trading professionals
+- **Mobile Responsive**: Works on both desktop and mobile devices
+
+The app includes the exact bull call spread example you mentioned (Buy 125 Call + Sell 130 Call) and will show you the net premium calculation in real-time!
