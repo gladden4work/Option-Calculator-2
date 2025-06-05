@@ -461,10 +461,51 @@
             return { price, delta, gamma, theta, vega, rho };
         }
 
-        function calculateSingleLeg() {
-            if (currentOptionStyle === 'american') {
-                alert('American style selected. Note: This calculator uses the Black-Scholes model, which is designed for European options. The price shown is an approximation and may not be accurate for American options, especially puts.');
+        function binomialTreeAmerican(S, K, T, r, sigma, optionType, steps = 100) {
+            const dt = T / steps;
+            const u = Math.exp(sigma * Math.sqrt(dt)); // Up factor
+            const d = 1 / u; // Down factor
+            const p = (Math.exp(r * dt) - d) / (u - d); // Risk-neutral probability of an up move
+
+            if (p < 0 || p > 1) { // Arbitrage opportunity or invalid parameters
+                console.warn("Binomial tree probability p is out of bounds (0-1):", p, " Check inputs r, sigma, T, steps.");
+                // Fallback or error handling: For simplicity, return NaN or a very distinct error value for price.
+                // A more robust solution might involve adjusting u/d or throwing an error.
+                // If r or sigma are very high/low relative to dt, p can go out of bounds.
+                // This can happen if T/steps (dt) is too large or sigma is too small/large.
+                return { price: NaN, delta: NaN, gamma: NaN, theta: NaN, vega: NaN, rho: NaN }; 
             }
+
+            // Initialize option prices at maturity (step N)
+            let optionValues = new Array(steps + 1);
+            for (let i = 0; i <= steps; i++) {
+                const stockPriceAtNode = S * Math.pow(u, i) * Math.pow(d, steps - i);
+                if (optionType === 'call') {
+                    optionValues[i] = Math.max(0, stockPriceAtNode - K);
+                } else { // put
+                    optionValues[i] = Math.max(0, K - stockPriceAtNode);
+                }
+            }
+
+            // Work backwards through the tree
+            for (let step = steps - 1; step >= 0; step--) {
+                for (let i = 0; i <= step; i++) {
+                    const stockPriceAtNode = S * Math.pow(u, i) * Math.pow(d, step - i);
+                    const continuationValue = Math.exp(-r * dt) * (p * optionValues[i + 1] + (1 - p) * optionValues[i]);
+                    let exerciseValue;
+                    if (optionType === 'call') {
+                        exerciseValue = Math.max(0, stockPriceAtNode - K);
+                    } else { // put
+                        exerciseValue = Math.max(0, K - stockPriceAtNode);
+                    }
+                    optionValues[i] = Math.max(exerciseValue, continuationValue);
+                }
+            }
+            // Greeks are more complex to calculate with binomial tree and are omitted for now
+            return { price: optionValues[0], delta: NaN, gamma: NaN, theta: NaN, vega: NaN, rho: NaN };
+        }
+
+        function calculateSingleLeg() {
 
             const S = parseFloat(document.getElementById('underlyingPrice').value) || 0;
             const K = parseFloat(document.getElementById('strikePrice').value) || 0;
@@ -483,15 +524,20 @@
                 return; 
             }
 
-            const result = blackScholes(S, K, T, r, sigma, optionType);
+            let result;
+            if (currentOptionStyle === 'european') {
+                result = blackScholes(S, K, T, r, sigma, optionType);
+            } else { // american
+                result = binomialTreeAmerican(S, K, T, r, sigma, optionType); // Using default steps (100)
+            }
             
             // Update displays
-            document.getElementById('theoreticalPrice').textContent = '$' + result.price.toFixed(4);
-            document.getElementById('deltaValue').textContent = result.delta.toFixed(4);
-            document.getElementById('gammaValue').textContent = result.gamma.toFixed(4);
-            document.getElementById('thetaValue').textContent = result.theta.toFixed(4);
-            document.getElementById('vegaValue').textContent = result.vega.toFixed(4);
-            document.getElementById('rhoValue').textContent = result.rho.toFixed(4);
+            document.getElementById('theoreticalPrice').textContent = isNaN(result.price) ? 'Error' : '$' + result.price.toFixed(4);
+            document.getElementById('deltaValue').textContent = isNaN(result.delta) ? 'N/A' : result.delta.toFixed(4);
+            document.getElementById('gammaValue').textContent = isNaN(result.gamma) ? 'N/A' : result.gamma.toFixed(4);
+            document.getElementById('thetaValue').textContent = isNaN(result.theta) ? 'N/A' : result.theta.toFixed(4);
+            document.getElementById('vegaValue').textContent = isNaN(result.vega) ? 'N/A' : result.vega.toFixed(4);
+            document.getElementById('rhoValue').textContent = isNaN(result.rho) ? 'N/A' : result.rho.toFixed(4);
             
             // Calculate difference (using placeholder market price)
             const marketPrice = 12.0; // Placeholder
@@ -575,7 +621,14 @@
                 const r_leg = riskFreeRateInput / 100.0; // Convert percentage to decimal
                 
                 if (K > 0) {
-                    const result = blackScholes(S, K, T_leg, r_leg, sigma_leg, optionType);
+                    let legResult;
+                    if (currentOptionStyle === 'european') {
+                        legResult = blackScholes(S, K, T_leg, r_leg, sigma_leg, optionType);
+                    } else { // american
+                        legResult = binomialTreeAmerican(S, K, T_leg, r_leg, sigma_leg, optionType);
+                    }
+
+                    const result = legResult; // Use 'result' consistently for leg's pricing output
                     const multiplier = action === 'buy' ? 1 : -1;
                     
                     // Update individual leg premium display
@@ -592,12 +645,12 @@
             });
             
             // Update displays
-            document.getElementById('netPremium').textContent = '$' + netPremium.toFixed(4);
-            document.getElementById('netDelta').textContent = netDelta.toFixed(4);
-            document.getElementById('netGamma').textContent = netGamma.toFixed(4);
-            document.getElementById('netTheta').textContent = netTheta.toFixed(4);
-            document.getElementById('netVega').textContent = netVega.toFixed(4);
-            document.getElementById('netRho').textContent = netRho.toFixed(4);
+            document.getElementById('netPremium').textContent = isNaN(netPremium) ? 'Error' : '$' + netPremium.toFixed(4);
+            document.getElementById('netDelta').textContent = isNaN(netDelta) ? 'N/A' : netDelta.toFixed(4);
+            document.getElementById('netGamma').textContent = isNaN(netGamma) ? 'N/A' : netGamma.toFixed(4);
+            document.getElementById('netTheta').textContent = isNaN(netTheta) ? 'N/A' : netTheta.toFixed(4);
+            document.getElementById('netVega').textContent = isNaN(netVega) ? 'N/A' : netVega.toFixed(4);
+            document.getElementById('netRho').textContent = isNaN(netRho) ? 'N/A' : netRho.toFixed(4);
             
             // Color code net premium
             const netPremiumElement = document.getElementById('netPremium');
