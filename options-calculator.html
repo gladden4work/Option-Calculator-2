@@ -363,6 +363,7 @@
                     <input type="number" id="multiLegUnderlyingPrice" class="form-control" value="100">
                 </div>
                 <button id="addLegBtn" class="add-leg-btn">+ Add Leg</button>
+                <button id="duplicateStrategyBtn" class="add-leg-btn" style="margin-left:10px;">Duplicate Strategy</button>
                 
                 <div id="legsContainer">
                     <!-- Legs will be added dynamically -->
@@ -396,6 +397,50 @@
                     </div>
                 </div>
             </div>
+
+            <div class="multi-leg-section" id="multiLegBuilder2" style="display:none; margin-top:40px;">
+                <div class="leg-header">
+                    <h3>Multi-Leg Strategy Builder 2</h3>
+                    <button id="removeBuilder2Btn" class="remove-leg">Remove Strategy</button>
+                </div>
+                <div class="form-group">
+                    <label for="multiLegUnderlyingPrice2" class="form-label">Underlying Price ($)</label>
+                    <input type="number" id="multiLegUnderlyingPrice2" class="form-control" value="100">
+                </div>
+                <button id="addLegBtn2" class="add-leg-btn">+ Add Leg</button>
+
+                <div id="legsContainer2">
+                    <!-- Legs will be added dynamically -->
+                </div>
+
+                <div class="net-premium-display">
+                    <div style="margin-bottom: 10px; color: #ccc;">Net Premium</div>
+                    <div class="net-premium-value" id="netPremium2">$0.0000</div>
+                </div>
+
+                <div class="greeks-grid">
+                    <div class="greek-item">
+                        <div class="greek-label">Net Delta</div>
+                        <div class="greek-value" id="netDelta2">0.0000</div>
+                    </div>
+                    <div class="greek-item">
+                        <div class="greek-label">Net Gamma</div>
+                        <div class="greek-value" id="netGamma2">0.0000</div>
+                    </div>
+                    <div class="greek-item">
+                        <div class="greek-label">Net Theta</div>
+                        <div class="greek-value" id="netTheta2">0.0000</div>
+                    </div>
+                    <div class="greek-item">
+                        <div class="greek-label">Net Vega</div>
+                        <div class="greek-value" id="netVega2">0.0000</div>
+                    </div>
+                    <div class="greek-item">
+                        <div class="greek-label">Net Rho</div>
+                        <div class="greek-value" id="netRho2">0.0000</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -405,6 +450,8 @@
         const TRADING_DAYS_PER_YEAR = 252; // Common convention for options, can also use 365 for calendar days
         let legCounter = 0;
         let legs = [];
+        let legCounter2 = 0;
+        let legs2 = [];
 
         // Mathematical functions
         function normalCDF(x) {
@@ -656,7 +703,111 @@
             document.getElementById('netRho').textContent = isNaN(netRho) ? 'N/A' : netRho.toFixed(4);
             
             // Color code net premium
-            const netPremiumElement = document.getElementById('netPremium');
+        const netPremiumElement = document.getElementById('netPremium');
+        netPremiumElement.className = netPremium >= 0 ? 'net-premium-value positive' : 'net-premium-value negative';
+        }
+
+        function addLeg2() {
+            legCounter2++;
+            const legDiv = document.createElement('div');
+            legDiv.className = 'leg-item';
+            legDiv.id = 'leg2-' + legCounter2;
+
+            legDiv.innerHTML = `
+                <div class="leg-header">
+                    <h4>Leg ${legCounter2}</h4>
+                    <button class="remove-leg" onclick="removeLeg2(${legCounter2})">Remove</button>
+                </div>
+                <div class="leg-controls">
+                    <select id="leg2-${legCounter2}-type" onchange="calculateMultiLeg2()">
+                        <option value="call">Call</option>
+                        <option value="put">Put</option>
+                    </select>
+                    <select id="leg2-${legCounter2}-action" onchange="calculateMultiLeg2()">
+                        <option value="buy">Buy</option>
+                        <option value="sell">Sell</option>
+                    </select>
+                    <input type="number" id="leg2Strike-${legCounter2}" placeholder="Strike Price" step="any" onchange="calculateMultiLeg2()">
+                    <input type="number" id="leg2DaysToExpiry-${legCounter2}" placeholder="Days to Expiry" step="any" onchange="calculateMultiLeg2()">
+                    <input type="number" id="leg2Volatility-${legCounter2}" placeholder="Volatility (%)" step="any" onchange="calculateMultiLeg2()">
+                    <input type="number" id="leg2RiskFreeRate-${legCounter2}" placeholder="Risk-Free Rate (%)" step="any" onchange="calculateMultiLeg2()">
+                    <input type="number" id="leg2Quantity-${legCounter2}" placeholder="Quantity" value="1" onchange="calculateMultiLeg2()">
+                </div>
+                <div style="margin-top: 10px; color: #ccc;">
+                    Premium: $<span id="leg2-${legCounter2}-premium">0.0000</span>
+                </div>
+            `;
+
+            document.getElementById('legsContainer2').appendChild(legDiv);
+            legs2.push({ id: legCounter2 });
+            calculateMultiLeg2();
+        }
+
+        function removeLeg2(legId) {
+            const el = document.getElementById('leg2-' + legId);
+            if (el) el.remove();
+            legs2 = legs2.filter(leg => leg.id !== legId);
+            calculateMultiLeg2();
+        }
+
+        function calculateMultiLeg2() {
+            const S = parseFloat(document.getElementById('multiLegUnderlyingPrice2').value) || 0;
+            let netPremium = 0;
+            let netDelta = 0;
+            let netGamma = 0;
+            let netTheta = 0;
+            let netVega = 0;
+            let netRho = 0;
+
+            legs2.forEach(leg => {
+                const legElement = document.getElementById('leg2-' + leg.id);
+                if (!legElement) return;
+
+                const optionType = document.getElementById('leg2-' + leg.id + '-type').value;
+                const action = document.getElementById('leg2-' + leg.id + '-action').value;
+                const K = parseFloat(document.getElementById('leg2Strike-' + leg.id).value) || 0;
+                const daysToExpiryInput = parseFloat(document.getElementById('leg2DaysToExpiry-' + leg.id).value);
+                const volatilityInput = parseFloat(document.getElementById('leg2Volatility-' + leg.id).value);
+                const riskFreeRateInput = parseFloat(document.getElementById('leg2RiskFreeRate-' + leg.id).value);
+                const quantity = parseFloat(document.getElementById('leg2Quantity-' + leg.id).value) || 1;
+
+                if (isNaN(K) || isNaN(daysToExpiryInput) || isNaN(volatilityInput) || isNaN(riskFreeRateInput) || K <= 0) {
+                    document.getElementById('leg2-' + leg.id + '-premium').textContent = 'Error';
+                    return;
+                }
+
+                const T_leg = daysToExpiryInput / 365.0;
+                const sigma_leg = volatilityInput / 100.0;
+                const r_leg = riskFreeRateInput / 100.0;
+
+                let legResult;
+                if (currentOptionStyle === 'european') {
+                    legResult = blackScholes(S, K, T_leg, r_leg, sigma_leg, optionType);
+                } else {
+                    legResult = binomialTreeAmerican(S, K, T_leg, r_leg, sigma_leg, optionType);
+                }
+
+                const result = legResult;
+                const multiplier = action === 'buy' ? 1 : -1;
+
+                document.getElementById('leg2-' + leg.id + '-premium').textContent = result.price.toFixed(4);
+
+                netPremium += result.price * quantity * multiplier;
+                netDelta += result.delta * quantity * multiplier;
+                netGamma += result.gamma * quantity * multiplier;
+                netTheta += result.theta * quantity * multiplier;
+                netVega += result.vega * quantity * multiplier;
+                netRho += result.rho * quantity * multiplier;
+            });
+
+            document.getElementById('netPremium2').textContent = isNaN(netPremium) ? 'Error' : '$' + netPremium.toFixed(4);
+            document.getElementById('netDelta2').textContent = isNaN(netDelta) ? 'N/A' : netDelta.toFixed(4);
+            document.getElementById('netGamma2').textContent = isNaN(netGamma) ? 'N/A' : netGamma.toFixed(4);
+            document.getElementById('netTheta2').textContent = isNaN(netTheta) ? 'N/A' : netTheta.toFixed(4);
+            document.getElementById('netVega2').textContent = isNaN(netVega) ? 'N/A' : netVega.toFixed(4);
+            document.getElementById('netRho2').textContent = isNaN(netRho) ? 'N/A' : netRho.toFixed(4);
+
+            const netPremiumElement = document.getElementById('netPremium2');
             netPremiumElement.className = netPremium >= 0 ? 'net-premium-value positive' : 'net-premium-value negative';
         }
 
@@ -703,6 +854,40 @@
         });
 
         document.getElementById('addLegBtn').addEventListener('click', addLeg);
+        document.getElementById('addLegBtn2').addEventListener('click', addLeg2);
+        document.getElementById('duplicateStrategyBtn').addEventListener('click', function() {
+            const builder2 = document.getElementById('multiLegBuilder2');
+            builder2.style.display = 'block';
+
+            // Copy underlying price
+            document.getElementById('multiLegUnderlyingPrice2').value = document.getElementById('multiLegUnderlyingPrice').value;
+
+            // Clear existing legs in builder2
+            document.getElementById('legsContainer2').innerHTML = '';
+            legs2 = [];
+            legCounter2 = 0;
+
+            legs.forEach(leg => {
+                addLeg2();
+                const srcId = leg.id;
+                const destId = legCounter2;
+                document.getElementById('leg2-' + destId + '-type').value = document.getElementById('leg-' + srcId + '-type').value;
+                document.getElementById('leg2-' + destId + '-action').value = document.getElementById('leg-' + srcId + '-action').value;
+                document.getElementById('leg2Strike-' + destId).value = document.getElementById('legStrike-' + srcId).value;
+                document.getElementById('leg2DaysToExpiry-' + destId).value = document.getElementById('legDaysToExpiry-' + srcId).value;
+                document.getElementById('leg2Volatility-' + destId).value = document.getElementById('legVolatility-' + srcId).value;
+                document.getElementById('leg2RiskFreeRate-' + destId).value = document.getElementById('legRiskFreeRate-' + srcId).value;
+                document.getElementById('leg2Quantity-' + destId).value = document.getElementById('legQuantity-' + srcId).value;
+            });
+            calculateMultiLeg2();
+        });
+
+        document.getElementById('removeBuilder2Btn').addEventListener('click', function() {
+            document.getElementById('multiLegBuilder2').style.display = 'none';
+            document.getElementById('legsContainer2').innerHTML = '';
+            legs2 = [];
+            legCounter2 = 0;
+        });
 
         // Add event listeners for all input fields
         ['underlyingPrice', 'strikePrice', 'daysToExpiry', 'impliedVolatility', 'riskFreeRate', 'optionType'].forEach(id => {
@@ -713,7 +898,12 @@
         const multiLegUnderlyingPriceInput = document.getElementById('multiLegUnderlyingPrice');
         if (multiLegUnderlyingPriceInput) {
             multiLegUnderlyingPriceInput.addEventListener('input', calculateMultiLeg);
-            multiLegUnderlyingPriceInput.addEventListener('change', calculateMultiLeg); 
+            multiLegUnderlyingPriceInput.addEventListener('change', calculateMultiLeg);
+        }
+        const multiLegUnderlyingPriceInput2 = document.getElementById('multiLegUnderlyingPrice2');
+        if (multiLegUnderlyingPriceInput2) {
+            multiLegUnderlyingPriceInput2.addEventListener('input', calculateMultiLeg2);
+            multiLegUnderlyingPriceInput2.addEventListener('change', calculateMultiLeg2);
         }
 
         // Initialize the application
@@ -730,14 +920,22 @@
             calculateSingleLeg();
             
             // Add default leg if multi-leg section is active and has no legs
-            if (document.getElementById('multiLegSection').classList.contains('active') && 
+            if (document.getElementById('multiLegSection').classList.contains('active') &&
                 document.getElementById('legsContainer').children.length === 0) {
                 addLeg();
+            }
+
+            if (document.getElementById('multiLegBuilder2').style.display !== 'none' &&
+                document.getElementById('legsContainer2').children.length === 0) {
+                addLeg2();
             }
 
             // Initial calculation for multi-leg if it's the active view
             if (document.getElementById('multiLegSection').classList.contains('active')) {
                  calculateMultiLeg();
+            }
+            if (document.getElementById('multiLegBuilder2').style.display !== 'none') {
+                 calculateMultiLeg2();
             }
         });
     </script>
